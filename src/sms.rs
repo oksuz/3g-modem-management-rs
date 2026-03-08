@@ -1,6 +1,6 @@
 use tokio_serial::{self, SerialPortBuilderExt};
 
-use crate::at_command::at;
+use crate::at_command::{self, cmd};
 
 pub fn prepare_sms_content(message: Option<&str>) -> Vec<u8> {
     let message = message.unwrap_or("EHLO");
@@ -13,11 +13,11 @@ pub fn prepare_sms_content(message: Option<&str>) -> Vec<u8> {
 pub async fn send_sms(port: &str, receiver: &str, message: Option<&str>) -> Option<()> {
     let mut serial = tokio_serial::new(port, 115_200).open_native_async().ok()?;
 
-    let _ = at::send_cmd_and_wait(at::AT, &mut serial).await;
-    let _ = at::send_cmd_and_wait(at::SWITCH_TXT_SMS_MODE, &mut serial).await;
-    let _ = at::send_cmd_and_wait(at::SET_GSM_CHARSET, &mut serial).await;
-    let _ = at::send_cmd_and_wait(&at::start_sms(&receiver), &mut serial).await;
-    let _ = at::send_cmd_and_wait(&prepare_sms_content(message), &mut serial).await;
+    let _ = at_command::send_cmd_and_wait(cmd::AT, &mut serial).await;
+    let _ = at_command::send_cmd_and_wait(cmd::SWITCH_TXT_SMS_MODE, &mut serial).await;
+    let _ = at_command::send_cmd_and_wait(cmd::SET_GSM_CHARSET, &mut serial).await;
+    let _ = at_command::send_cmd_and_wait(&cmd::start_sms(&receiver), &mut serial).await;
+    let _ = at_command::send_cmd_and_wait(&prepare_sms_content(message), &mut serial).await;
 
-    at::wait_cmgs(&mut serial).await
+    at_command::wait_cmgs(&mut serial).await
 }

@@ -1,14 +1,13 @@
-pub mod at {
-    use std::io::Error;
+use std::io::Error;
 
-    use crate::parser::has_cmgs;
-    use std::time::Duration;
-    use tokio::io::AsyncReadExt;
-    use tokio::io::AsyncWriteExt;
-    use tokio::time::sleep;
-    use tokio::time::timeout;
-    use tokio_serial::SerialStream;
-
+use crate::parser::has_cmgs;
+use std::time::Duration;
+use tokio::io::AsyncReadExt;
+use tokio::io::AsyncWriteExt;
+use tokio::time::sleep;
+use tokio::time::timeout;
+use tokio_serial::SerialStream;
+pub mod cmd {
     pub const ATI: &[u8] = b"ATI\r";
 
     pub const AT: &[u8] = b"AT\r";
@@ -31,38 +30,38 @@ pub mod at {
     pub fn start_sms(receiver: &str) -> Vec<u8> {
         format!("AT+CMGS=\"{}\"\r", receiver).into_bytes()
     }
+}
 
-    pub async fn send_cmd_and_wait(cmd: &[u8], serial: &mut SerialStream) -> Result<(), Error> {
-        let _ = serial.write_all(cmd).await?;
-        sleep(Duration::from_millis(150)).await;
-        Ok(())
-    }
+pub async fn send_cmd_and_wait(cmd: &[u8], serial: &mut SerialStream) -> Result<(), Error> {
+    let _ = serial.write_all(cmd).await?;
+    sleep(Duration::from_millis(150)).await;
+    Ok(())
+}
 
-    pub async fn wait_cmgs(serial: &mut SerialStream) -> Option<()> {
-        let mut current_try = 1;
-        loop {
-            if current_try > 5 {
-                break;
-            }
-
-            let mut buff = [0u8; 1024];
-            let read_result = timeout(Duration::from_secs(2), serial.read(&mut buff)).await;
-
-            if let Ok(Ok(read_bytes)) = read_result {
-                let response = str::from_utf8(&buff[..read_bytes]).unwrap();
-                match has_cmgs(response) {
-                    Some(_) => {
-                        return Some(());
-                    }
-                    None => {
-                        sleep(Duration::from_secs(1)).await;
-                    }
-                }
-            }
-
-            current_try += 1;
+pub async fn wait_cmgs(serial: &mut SerialStream) -> Option<()> {
+    let mut current_try = 1;
+    loop {
+        if current_try > 5 {
+            break;
         }
 
-        None
+        let mut buff = [0u8; 1024];
+        let read_result = timeout(Duration::from_secs(2), serial.read(&mut buff)).await;
+
+        if let Ok(Ok(read_bytes)) = read_result {
+            let response = str::from_utf8(&buff[..read_bytes]).unwrap();
+            match has_cmgs(response) {
+                Some(_) => {
+                    return Some(());
+                }
+                None => {
+                    sleep(Duration::from_secs(1)).await;
+                }
+            }
+        }
+
+        current_try += 1;
     }
+
+    None
 }

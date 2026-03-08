@@ -1,24 +1,17 @@
 use std::{sync::Arc, time::Instant};
 
-use crate::{
+use modem_scanner::{
     device_map::{DeviceMap, ModemInfo},
-    scanner::probe_port,
-    sms::send_sms,
+    scanner, sms,
 };
 
-mod at_command;
-mod device_map;
-mod parser;
-mod scanner;
-mod sms;
-
-fn add_modem(port: &str, icc_id: Option<String>, modems: Arc<DeviceMap>) {
-    if let Some(icc_id) = icc_id {
+fn add_modem(port: &str, imei: Option<String>, modems: Arc<DeviceMap>) {
+    if let Some(imei) = imei {
         modems.insert(
-            icc_id.clone(),
+            imei.clone(),
             ModemInfo {
                 port: port.into(),
-                imei: icc_id,
+                imei: imei,
                 last_seen: Instant::now(),
             },
         );
@@ -33,9 +26,9 @@ async fn main() {
     println!("found  ports {:?}", ports);
 
     for p in &ports {
-        match probe_port(&p).await {
-            Some((port, icc_id)) => {
-                add_modem(port, icc_id, modems.clone());
+        match scanner::probe_port(&p).await {
+            Some((port, imei)) => {
+                add_modem(port, imei, modems.clone());
             }
             None => {
                 println!("skipping port {}", p);
@@ -44,7 +37,7 @@ async fn main() {
     }
 
     for modem in modems.iter() {
-        let sms_result = send_sms(
+        let sms_result = sms::send_sms(
             &modem.port,
             "+90",
             Some("this message has been sent via a rust code!"),
