@@ -6,7 +6,7 @@ use tokio::time::{sleep, timeout};
 use tokio_serial::{self, SerialPortBuilderExt};
 
 use crate::at_command::at;
-use crate::parser::parse_ati_response;
+use crate::parser::get_imei_from_ati;
 
 pub async fn scan_ports() -> Vec<String> {
     tokio::task::spawn_blocking(|| {
@@ -20,7 +20,7 @@ pub async fn scan_ports() -> Vec<String> {
     .unwrap_or_default()
 }
 
-pub async fn probe_port(port: &str) -> Option<(String, Option<String>)> {
+pub async fn probe_port(port: &str) -> Option<(&str, Option<String>)> {
     let mut serial = tokio_serial::new(port, 115_200).open_native_async().ok()?;
 
     let _ = serial.write_all(at::ATI).await;
@@ -37,10 +37,8 @@ pub async fn probe_port(port: &str) -> Option<(String, Option<String>)> {
                 return None;
             }
 
-            return Some((
-                port.to_string(),
-                parse_ati_response(String::from_utf8_lossy(&buff[..n]).into()),
-            ));
+            let imei = get_imei_from_ati(std::str::from_utf8(&buff[..n]).unwrap());
+            return Some((port, imei));
         }
         Ok(Err(e)) => {
             eprintln!("error on reading from port({}): {:?}", port, e);

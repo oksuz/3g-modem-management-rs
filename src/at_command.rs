@@ -1,6 +1,7 @@
 pub mod at {
     use std::io::Error;
 
+    use crate::parser::has_cmgs;
     use std::time::Duration;
     use tokio::io::AsyncReadExt;
     use tokio::io::AsyncWriteExt;
@@ -48,15 +49,8 @@ pub mod at {
             let read_result = timeout(Duration::from_secs(2), serial.read(&mut buff)).await;
 
             if let Ok(Ok(read_bytes)) = read_result {
-                let response: String = String::from_utf8_lossy(&buff[..read_bytes]).into();
-
-                let has_cmgs = response
-                    .lines()
-                    .map(str::trim)
-                    .find_map(|l| l.strip_prefix("+CMGS:"))
-                    .map(str::trim);
-
-                match has_cmgs {
+                let response = str::from_utf8(&buff[..read_bytes]).unwrap();
+                match has_cmgs(response) {
                     Some(_) => {
                         return Some(());
                     }

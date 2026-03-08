@@ -12,12 +12,12 @@ mod parser;
 mod scanner;
 mod sms;
 
-fn add_modem(port: String, icc_id: Option<String>, modems: Arc<DeviceMap>) {
+fn add_modem(port: &str, icc_id: Option<String>, modems: Arc<DeviceMap>) {
     if let Some(icc_id) = icc_id {
         modems.insert(
             icc_id.clone(),
             ModemInfo {
-                port,
+                port: port.into(),
                 imei: icc_id,
                 last_seen: Instant::now(),
             },
