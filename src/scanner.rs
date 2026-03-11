@@ -8,16 +8,12 @@ use tokio_serial::{self, SerialPortBuilderExt};
 use crate::at_command::{self, cmd};
 use crate::parser::get_imei_from_ati;
 
-pub async fn scan_ports() -> Vec<String> {
-    tokio::task::spawn_blocking(|| {
-        glob("/dev/ttyUSB*")
-            .expect("unable to read glob pattern")
-            .filter_map(Result::ok)
-            .map(|p| p.display().to_string())
-            .collect()
-    })
-    .await
-    .unwrap_or_default()
+pub fn scan_ports() -> Vec<String> {
+    glob("/dev/ttyUSB*")
+        .expect("unable to read glob pattern")
+        .filter_map(Result::ok)
+        .map(|p| p.display().to_string())
+        .collect()
 }
 
 pub async fn probe_port(port: &str) -> Option<(&str, Option<String>)> {

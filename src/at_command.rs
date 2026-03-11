@@ -6,6 +6,7 @@ use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::time::sleep;
 use tokio::time::timeout;
+use tokio_serial::SerialPortBuilderExt;
 use tokio_serial::SerialStream;
 pub mod cmd {
     pub const ATI: &[u8] = b"ATI\r";
@@ -64,4 +65,47 @@ pub async fn wait_cmgs(serial: &mut SerialStream) -> Option<()> {
     }
 
     None
+}
+
+pub async fn get_iccid(port: &str) -> Option<String> {
+    let mut serial = tokio_serial::new(port, 115_200).open_native_async().ok()?;
+    let _ = send_cmd_and_wait(cmd::ASK_ICCID, &mut serial).await;
+
+    let mut buff = [0u8; 1024];
+    let read_bytes = serial
+        .read(&mut buff)
+        .await
+        .map_err(|e| {
+            eprintln!("cannot read device output: {:?}", e);
+            e
+        })
+        .ok()?;
+
+    if read_bytes == 0 {
+        return None;
+    }
+
+    let iccid = str::from_utf8(&buff[..read_bytes]).ok()?.to_string();
+    let iccid = iccid
+        .lines()
+        .find_map(|l| l.strip_prefix("^ICCID:"))
+        .map(|s| s.trim().trim_matches('"'))
+        .expect("cannot find iccid");
+
+    let iccid_bytes = iccid.as_bytes();
+    let mut iccid = String::new();
+    for iccid_chunk in iccid_bytes.chunks(2) {
+        if iccid_chunk.len() == 2 {
+            iccid.push(iccid_chunk[1] as char);
+            iccid.push(iccid_chunk[0] as char);
+        } else {
+            iccid.push(iccid_chunk[0] as char);
+        }
+    }
+
+    if iccid.len() == 19 {
+        iccid.push('f');
+    }
+
+    Some(iccid)
 }

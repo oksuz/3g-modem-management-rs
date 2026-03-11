@@ -1,8 +1,11 @@
-use std::{sync::Arc, time::Instant};
+use std::{error::Error, sync::Arc, time::Instant};
 
+use dotenvy::dotenv;
 use modem_scanner::{
+    api::get_active_numbers,
+    at_command::get_iccid,
     device_map::{DeviceMap, ModemInfo},
-    scanner, sms,
+    get_random_number, scanner, sms,
 };
 
 fn add_modem(port: &str, imei: Option<String>, modems: Arc<DeviceMap>) {
@@ -19,9 +22,11 @@ fn add_modem(port: &str, imei: Option<String>, modems: Arc<DeviceMap>) {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn Error>> {
+    dotenv().ok();
+
     let modems = Arc::new(DeviceMap::new());
-    let ports = scanner::scan_ports().await;
+    let ports = scanner::scan_ports();
 
     println!("found  ports {:?}", ports);
 
@@ -36,21 +41,28 @@ async fn main() {
         };
     }
 
-    for modem in modems.iter() {
-        let sms_result = sms::send_sms(
-            &modem.port,
-            "+90",
-            Some("this message has been sent via a rust code!"),
-        )
-        .await;
+    let numbers = get_active_numbers().await.expect("cannot fetch numbers");
 
-        match sms_result {
-            Some(_) => {
-                println!("sms has been sent!");
+    for modem in modems.iter() {
+        let number = get_random_number(&numbers).unwrap();
+
+        let result = match get_iccid(&modem.port).await {
+            Some(iccid) => {
+                sms::send_sms(&modem.port, &number, Some(iccid.clone()))
+                    .await
+                    .ok_or("Cannot send the sms")?;
+                Ok(iccid)
             }
-            None => {
-                eprintln!("sms has not been sent");
-            }
+            None => Err("cannot find iccid"),
+        };
+
+        if let Ok(iccid) = result {
+            println!(
+                "the sms has been sent to {}, for iccID: {} on port {}",
+                &number, &iccid, &modem.port
+            )
         }
     }
+
+    Ok(())
 }
