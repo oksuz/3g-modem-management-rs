@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use glob::glob;
 use tokio::io::AsyncReadExt;
-use tokio::time::{sleep, timeout};
+use tokio::time::timeout;
 use tokio_serial::{self, SerialPortBuilderExt};
 
 use crate::at_command::{self, cmd};
@@ -20,7 +20,6 @@ pub async fn probe_port(port: &str) -> Option<(&str, Option<String>)> {
     let mut serial = tokio_serial::new(port, 115_200).open_native_async().ok()?;
 
     let _ = at_command::send_cmd_and_wait(cmd::ATI, &mut serial).await;
-    sleep(Duration::from_millis(100)).await;
 
     let mut buff = [0u8; 1024];
     let read = timeout(Duration::from_secs(2), serial.read(&mut buff)).await;

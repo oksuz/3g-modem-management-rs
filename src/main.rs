@@ -1,13 +1,12 @@
-use rand::seq::IndexedRandom;
-use std::{error::Error, sync::Arc, time::Instant};
-
 use dotenvy::dotenv;
 use modem_scanner::{
-    api::get_active_numbers,
+    api::{get_active_numbers, read_remote_sms},
     at_command::get_iccid,
     device_map::{DeviceMap, ModemInfo},
     scanner, sms,
 };
+use rand::seq::IndexedRandom;
+use std::{error::Error, sync::Arc, time::Instant};
 
 fn add_modem(port: &str, imei: Option<String>, modems: Arc<DeviceMap>) {
     if let Some(imei) = imei {
@@ -31,7 +30,6 @@ pub fn get_random_number(numbers: &[String]) -> Option<&String> {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     dotenv().ok();
-
     let modems = Arc::new(DeviceMap::new());
     let ports = scanner::scan_ports();
 
@@ -52,16 +50,29 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     for modem in modems.iter() {
         let number = get_random_number(&numbers).unwrap();
-        let iccid = get_iccid(&modem.port).await.ok_or("cannot read iccid")?;
 
-        sms::send_sms(&modem.port, &number, Some(iccid.clone()))
-            .await
-            .ok_or("Cannot send the sms")?;
+        let Some(icc_id) = get_iccid(&modem.port).await else {
+            eprintln!("cannot read iccid on port {}", modem.port);
+            continue;
+        };
+
+        let sms_content = format!("iccid is:'{}'", icc_id.clone());
+        let Some(()) = sms::send_sms(&modem.port, &number, Some(sms_content)).await else {
+            eprintln!("cannot send the sms to number {}", &number);
+            continue;
+        };
 
         println!(
             "the sms has been sent to {}, for iccID: {} on port {}",
-            &number, &iccid, &modem.port
-        )
+            &number, &icc_id, &modem.port
+        );
+
+        let Some(msisdn) = read_remote_sms(&number, &icc_id, None).await else {
+            eprintln!("the sms cannot be read");
+            continue;
+        };
+
+        println!("gsm number found: {}", msisdn);
     }
 
     Ok(())

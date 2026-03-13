@@ -104,7 +104,7 @@ pub async fn get_iccid(port: &str) -> Option<String> {
     }
 
     if iccid.len() == 19 {
-        iccid.push('f');
+        iccid.push('F');
     }
 
     Some(iccid)
