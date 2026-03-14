@@ -1,5 +1,5 @@
 use dotenvy::dotenv;
-use modem_scanner::{
+use msisdn_extract_rs::{
     api, at_command,
     device_map::{DeviceMap, ModemInfo},
     scanner, sms,
