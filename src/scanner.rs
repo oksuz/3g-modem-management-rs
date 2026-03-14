@@ -30,16 +30,18 @@ pub async fn probe_port(port: &str) -> Option<(&str, Option<String>)> {
                 return None;
             }
 
-            let imei = get_imei_from_ati(std::str::from_utf8(&buff[..n]).unwrap());
-            return Some((port, imei));
+            let read_buff = std::str::from_utf8(&buff[..n]).unwrap_or_default();
+            let imei_maybe = get_imei_from_ati(read_buff);
+
+            return Some((port, imei_maybe));
         }
         Ok(Err(e)) => {
             eprintln!("error on reading from port({}): {:?}", port, e);
-            None
+            return None;
         }
         Err(e) => {
             eprintln!("error on reading from port({}): {:?}", port, e);
-            None
+            return None;
         }
     }
 }

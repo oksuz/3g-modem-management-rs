@@ -14,7 +14,7 @@ fn add_modem(port: &str, imei: Option<String>, modems: Arc<DeviceMap>) {
             imei.clone(),
             ModemInfo {
                 port: port.into(),
-                imei: imei,
+                imei,
                 last_seen: Instant::now(),
             },
         );
@@ -56,7 +56,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             continue;
         };
 
-        let sms_content = format!("iccid is:'{}'", icc_id.clone());
+        let sms_content = format!("iccid is:'{}'", &icc_id);
         let Some(()) = sms::send_sms(&modem.port, &number, Some(sms_content)).await else {
             eprintln!("cannot send the sms to number {}", &number);
             continue;
@@ -67,7 +67,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             &number, &icc_id, &modem.port
         );
 
-        let Some(msisdn) = read_remote_sms(&number, &icc_id, None).await else {
+        let Some(msisdn) = read_remote_sms(&number, &icc_id).await else {
             eprintln!("the sms cannot be read");
             continue;
         };

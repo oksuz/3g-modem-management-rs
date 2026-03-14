@@ -13,8 +13,5 @@ pub fn has_cmgs(resp: &str) -> Option<()> {
         .find_map(|l| l.strip_prefix("+CMGS:"))
         .map(str::trim);
 
-    match cmgs {
-        Some(_) => Some(()),
-        None => None,
-    }
+    cmgs.map(|_| ())
 }

@@ -34,23 +34,18 @@ pub mod cmd {
 }
 
 pub async fn send_cmd_and_wait(cmd: &[u8], serial: &mut SerialStream) -> Result<(), Error> {
-    let _ = serial.write_all(cmd).await?;
+    serial.write_all(cmd).await?;
     sleep(Duration::from_millis(150)).await;
     Ok(())
 }
 
 pub async fn wait_cmgs(serial: &mut SerialStream) -> Option<()> {
-    let mut current_try = 1;
-    loop {
-        if current_try > 5 {
-            break;
-        }
-
+    for _ in 0..5 {
         let mut buff = [0u8; 1024];
         let read_result = timeout(Duration::from_secs(2), serial.read(&mut buff)).await;
 
         if let Ok(Ok(read_bytes)) = read_result {
-            let response = str::from_utf8(&buff[..read_bytes]).unwrap();
+            let response = str::from_utf8(&buff[..read_bytes]).unwrap_or_default();
             match has_cmgs(response) {
                 Some(_) => {
                     return Some(());
@@ -60,8 +55,6 @@ pub async fn wait_cmgs(serial: &mut SerialStream) -> Option<()> {
                 }
             }
         }
-
-        current_try += 1;
     }
 
     None
@@ -86,11 +79,13 @@ pub async fn get_iccid(port: &str) -> Option<String> {
     }
 
     let iccid = str::from_utf8(&buff[..read_bytes]).ok()?.to_string();
-    let iccid = iccid
+    let Some(iccid) = iccid
         .lines()
         .find_map(|l| l.strip_prefix("^ICCID:"))
         .map(|s| s.trim().trim_matches('"'))
-        .expect("cannot find iccid");
+    else {
+        return None;
+    };
 
     let iccid_bytes = iccid.as_bytes();
     let mut iccid = String::new();
