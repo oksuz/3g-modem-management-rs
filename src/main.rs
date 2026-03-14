@@ -45,21 +45,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
     }
 
-    let msisdns = api::get_active_msisdns()
-        .await
-        .expect("cannot fetch numbers");
+    let msisdns = api::get_active_msisdns().await.expect("fetch numbers");
 
     for modem in modems.iter() {
         let reciver_msisdn = get_random_msisdn(&msisdns).unwrap();
 
         let Some(icc_id) = at_command::get_iccid(&modem.port).await else {
-            eprintln!("cannot read iccid on port {}", modem.port);
+            eprintln!("cannot read the iccid on the port {}", modem.port);
             continue;
         };
 
         let sms_content = format!("iccid is:'{}'", &icc_id);
         let Some(()) = sms::send_sms(&modem.port, &reciver_msisdn, Some(sms_content)).await else {
-            eprintln!("cannot send the sms to number {}", &reciver_msisdn);
+            eprintln!("cannot send the sms to the number {}", &reciver_msisdn);
             continue;
         };
 
@@ -80,7 +78,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 println!("{}", "-".repeat(20));
             } else {
                 println!("{}", "-".repeat(20));
-                println!("device register has got an error");
+                println!("msisdn register has been failed due to an error");
                 println!("status: {}", status);
                 println!("response: {}", result);
                 println!("{}", "-".repeat(20));
