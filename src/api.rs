@@ -28,7 +28,7 @@ static SMS_READ_API: LazyLock<String> = LazyLock::new(|| env::var("SMS_READ_API"
 
 static ACTIVE_SIMS_API: LazyLock<String> = LazyLock::new(|| env::var("ACTIVE_SIMS_API").unwrap());
 
-pub async fn get_active_numbers() -> Option<Vec<String>> {
+pub async fn get_active_msisdns() -> Option<Vec<String>> {
     let handle = || {
         let content = reqwest::blocking::get(&*ACTIVE_SIMS_API)
             .and_then(|r| r.text())

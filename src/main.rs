@@ -20,7 +20,7 @@ fn add_modem(port: &str, imei: Option<String>, modems: Arc<DeviceMap>) {
     }
 }
 
-pub fn get_random_number(numbers: &[String]) -> Option<&String> {
+pub fn get_random_msisdn(numbers: &[String]) -> Option<&String> {
     let mut rng = rand::rng();
 
     numbers.choose(&mut rng)
@@ -45,12 +45,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
     }
 
-    let numbers = api::get_active_numbers()
+    let msisdns = api::get_active_msisdns()
         .await
         .expect("cannot fetch numbers");
 
     for modem in modems.iter() {
-        let number = get_random_number(&numbers).unwrap();
+        let number = get_random_msisdn(&msisdns).unwrap();
 
         let Some(icc_id) = at_command::get_iccid(&modem.port).await else {
             eprintln!("cannot read iccid on port {}", modem.port);
