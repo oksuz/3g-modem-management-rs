@@ -15,6 +15,10 @@ This application extracts and registers MSISDN information for SIM cards using t
 5. Extract the sender's MSISDN from the received SMS
 6. Register the ICCID-MSISDN pair via the registration API
 
+## Usage
+
+Configure the environment variables in `.env` file and run the application to automatically detect and register SIM cards.
+
 ## Environment Variables
 
 Create a `.env` file with the following variables:
@@ -74,7 +78,3 @@ To disable it permanently:
 ```bash
 sudo systemctl disable ModemManager
 ```
-
-## Usage
-
-Configure the environment variables in `.env` file and run the application to automatically detect and register SIM cards.
