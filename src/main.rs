@@ -1,7 +1,6 @@
 use dotenvy::dotenv;
 use modem_scanner::{
-    api::{get_active_numbers, read_remote_sms},
-    at_command::get_iccid,
+    api, at_command,
     device_map::{DeviceMap, ModemInfo},
     scanner, sms,
 };
@@ -46,12 +45,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
     }
 
-    let numbers = get_active_numbers().await.expect("cannot fetch numbers");
+    let numbers = api::get_active_numbers()
+        .await
+        .expect("cannot fetch numbers");
 
     for modem in modems.iter() {
         let number = get_random_number(&numbers).unwrap();
 
-        let Some(icc_id) = get_iccid(&modem.port).await else {
+        let Some(icc_id) = at_command::get_iccid(&modem.port).await else {
             eprintln!("cannot read iccid on port {}", modem.port);
             continue;
         };
@@ -67,7 +68,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             &number, &icc_id, &modem.port
         );
 
-        let Some(msisdn) = read_remote_sms(&number, &icc_id).await else {
+        let Some(msisdn) = api::read_remote_sms(&number, &icc_id).await else {
             eprintln!("the sms cannot be read");
             continue;
         };
