@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .expect("cannot fetch numbers");
 
     for modem in modems.iter() {
-        let number = get_random_msisdn(&msisdns).unwrap();
+        let reciver_msisdn = get_random_msisdn(&msisdns).unwrap();
 
         let Some(icc_id) = at_command::get_iccid(&modem.port).await else {
             eprintln!("cannot read iccid on port {}", modem.port);
@@ -58,22 +58,36 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
 
         let sms_content = format!("iccid is:'{}'", &icc_id);
-        let Some(()) = sms::send_sms(&modem.port, &number, Some(sms_content)).await else {
-            eprintln!("cannot send the sms to number {}", &number);
+        let Some(()) = sms::send_sms(&modem.port, &reciver_msisdn, Some(sms_content)).await else {
+            eprintln!("cannot send the sms to number {}", &reciver_msisdn);
             continue;
         };
 
         println!(
             "the sms has been sent to {}, for iccID: {} on port {}",
-            &number, &icc_id, &modem.port
+            &reciver_msisdn, &icc_id, &modem.port
         );
 
-        let Some(msisdn) = api::read_remote_sms(&number, &icc_id).await else {
+        let Some(msisdn) = api::read_remote_sms(&reciver_msisdn, &icc_id).await else {
             eprintln!("the sms cannot be read");
             continue;
         };
 
-        println!("gsm number found: {}", msisdn);
+        if let Some((result, status)) = api::register_msisdn(&msisdn, &icc_id).await {
+            if status == 201 {
+                println!("{}", "-".repeat(20));
+                println!("{}", result);
+                println!("{}", "-".repeat(20));
+            } else {
+                println!("{}", "-".repeat(20));
+                println!("device register has got an error");
+                println!("status: {}", status);
+                println!("response: {}", result);
+                println!("{}", "-".repeat(20));
+            }
+        } else {
+            eprintln!("error on creating the gsm number");
+        }
     }
 
     Ok(())

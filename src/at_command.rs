@@ -78,7 +78,7 @@ pub async fn get_iccid(port: &str) -> Option<String> {
         return None;
     }
 
-    let iccid = str::from_utf8(&buff[..read_bytes]).ok()?.to_string();
+    let iccid = str::from_utf8(&buff[..read_bytes]).unwrap_or_default();
     let Some(iccid) = iccid
         .lines()
         .find_map(|l| l.strip_prefix("^ICCID:"))

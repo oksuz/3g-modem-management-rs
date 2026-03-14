@@ -1,4 +1,5 @@
 use regex::Regex;
+use reqwest::StatusCode;
 use std::{env, sync::LazyLock, thread, time::Duration};
 
 static TR_MSISDN_RE: LazyLock<Regex> =
@@ -27,6 +28,9 @@ static SMS_READ_SLEEP_DURATION: LazyLock<usize> = LazyLock::new(|| {
 static SMS_READ_API: LazyLock<String> = LazyLock::new(|| env::var("SMS_READ_API").unwrap());
 
 static ACTIVE_SIMS_API: LazyLock<String> = LazyLock::new(|| env::var("ACTIVE_SIMS_API").unwrap());
+
+static MSISDN_REGISTER_API: LazyLock<String> =
+    LazyLock::new(|| env::var("MSISDN_REGISTER_API").unwrap());
 
 pub async fn get_active_msisdns() -> Option<Vec<String>> {
     let handle = || {
@@ -80,6 +84,32 @@ pub async fn read_remote_sms(phone_number: &str, icc_id: &str) -> Option<String>
         }
 
         None
+    };
+
+    tokio::task::spawn_blocking(handle).await.unwrap()
+}
+
+pub async fn register_msisdn(msisdn: &str, icc_id: &str) -> Option<(String, StatusCode)> {
+    let msisd = msisdn.to_owned();
+    let icc_id = icc_id.to_owned();
+    let handle = move || {
+        let payload = format!(r#"{{"msisdn": "{}", "icc_id": "{}"}}"#, &msisd, &icc_id);
+        println!("sending the payload: {}", payload);
+        let client = reqwest::blocking::Client::new();
+        client
+            .post(&*MSISDN_REGISTER_API)
+            .body(payload)
+            .header("content-type", "application/json")
+            .send()
+            .map_err(|e| {
+                eprintln!("error on registering the gsm number: {:?}", e);
+                e
+            })
+            .and_then(|response| {
+                let status = response.status();
+                response.text().map(|r| (r, status))
+            })
+            .ok()
     };
 
     tokio::task::spawn_blocking(handle).await.unwrap()
