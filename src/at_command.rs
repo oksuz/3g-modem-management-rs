@@ -1,5 +1,6 @@
 use std::io::Error;
 
+use crate::parser::get_dbm_from_rssi;
 use crate::parser::has_cmgs;
 use std::time::Duration;
 use tokio::io::AsyncReadExt;
@@ -103,4 +104,50 @@ pub async fn get_iccid(port: &str) -> Option<String> {
     }
 
     Some(iccid)
+}
+
+fn signal_quality(dbm: i32) -> &'static str {
+    match dbm {
+        -50..=0 => "Excellent",
+        -70..=-51 => "Very Good",
+        -85..=-71 => "Medium",
+        -112..=-86 => "Weak",
+        _ => "Unknown",
+    }
+}
+
+pub async fn wait_for_gsm_network(port: &str) -> Option<()> {
+    let mut serial = tokio_serial::new(port, 115_200).open_native_async().ok()?;
+    let handle = async {
+        loop {
+            sleep(Duration::from_secs(10)).await;
+
+            let _ = send_cmd_and_wait(cmd::ASK_SIGNAL, &mut serial).await;
+
+            let mut buff = [0u8; 1024];
+            let read_bytes = serial.read(&mut buff).await.unwrap_or_default();
+
+            if read_bytes == 0 {
+                continue;
+            }
+
+            let rssi_raw = str::from_utf8(&buff[..read_bytes]).unwrap_or_default();
+            if let Some(dbm) = get_dbm_from_rssi(&rssi_raw) {
+                println!(
+                    "Current gms signal quality: {}({})",
+                    signal_quality(dbm),
+                    dbm
+                );
+
+                if dbm > -85 {
+                    return Some(dbm);
+                }
+            }
+        }
+    };
+
+    match timeout(Duration::from_mins(2), handle).await {
+        Ok(Some(_)) => Some(()),
+        _ => None,
+    }
 }

@@ -55,6 +55,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
             continue;
         };
 
+        let Some(_) = at_command::wait_for_gsm_network(&modem.port).await else {
+            eprintln!("the modem cannot connected to the gsm network");
+            continue;
+        };
+
         let sms_content = format!("iccid is:'{}'", &icc_id);
         let Some(()) = sms::send_sms(&modem.port, &reciver_msisdn, Some(sms_content)).await else {
             eprintln!("cannot send the sms to the number {}", &reciver_msisdn);
